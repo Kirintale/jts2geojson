@@ -17,9 +17,9 @@ import com.vividsolutions.jts.geom.Polygon;
 public class GeoJSONWriter {
 
     final static GeoJSONReader reader = new GeoJSONReader();
-        
+
     public org.wololo.geojson.Geometry write(Geometry geometry) {
-        Class<? extends Geometry> c = geometry.getClass();
+        Class< ? extends Geometry> c = geometry.getClass();
         if (c.equals(Point.class)) {
             return convert((Point) geometry);
         } else if (c.equals(LineString.class)) {
@@ -38,30 +38,27 @@ public class GeoJSONWriter {
             throw new UnsupportedOperationException();
         }
     }
-    
+
     public org.wololo.geojson.FeatureCollection write(List<Feature> features) {
         int size = features.size();
         org.wololo.geojson.Feature[] featuresJson = new org.wololo.geojson.Feature[size];
-        for (int i=0; i<size; i++) {
+        for (int i = 0; i < size; i++) {
             featuresJson[i] = features.get(i);
         }
         return new org.wololo.geojson.FeatureCollection(featuresJson);
     }
 
     org.wololo.geojson.Point convert(Point point) {
-        org.wololo.geojson.Point json = new org.wololo.geojson.Point(
-                convert(point.getCoordinate()));
+        org.wololo.geojson.Point json = new org.wololo.geojson.Point(convert(point.getCoordinate()));
         return json;
     }
 
     org.wololo.geojson.MultiPoint convert(MultiPoint multiPoint) {
-        return new org.wololo.geojson.MultiPoint(
-                convert(multiPoint.getCoordinates()));
+        return new org.wololo.geojson.MultiPoint(convert(multiPoint.getCoordinates()));
     }
 
     org.wololo.geojson.LineString convert(LineString lineString) {
-        return new org.wololo.geojson.LineString(
-                convert(lineString.getCoordinates()));
+        return new org.wololo.geojson.LineString(convert(lineString.getCoordinates()));
     }
 
     org.wololo.geojson.MultiLineString convert(MultiLineString multiLineString) {
@@ -76,9 +73,11 @@ public class GeoJSONWriter {
     org.wololo.geojson.Polygon convert(Polygon polygon) {
         int size = polygon.getNumInteriorRing() + 1;
         double[][][] rings = new double[size][][];
-        rings[0] = convert(polygon.getExteriorRing().getCoordinates());
+        final Coordinate[] coordinates = polygon.getExteriorRing().getCoordinates();
+        rings[0] = convert(GeoJsonCoordinateUtilities.correctPolygonCoordinateRotation(coordinates, false));
         for (int i = 0; i < size - 1; i++) {
-            rings[i + 1] = convert(polygon.getInteriorRingN(i).getCoordinates());
+            final Coordinate[] holeCoordinates = polygon.getInteriorRingN(i).getCoordinates();
+            rings[i + 1] = convert(GeoJsonCoordinateUtilities.correctPolygonCoordinateRotation(holeCoordinates, true));
         }
         return new org.wololo.geojson.Polygon(rings);
     }
@@ -96,16 +95,15 @@ public class GeoJSONWriter {
         int size = gc.getNumGeometries();
         org.wololo.geojson.Geometry[] geometries = new org.wololo.geojson.Geometry[size];
         for (int i = 0; i < size; i++) {
-            geometries[i] = write((Geometry) gc.getGeometryN(i));
+            geometries[i] = write(gc.getGeometryN(i));
         }
         return new org.wololo.geojson.GeometryCollection(geometries);
     }
 
     double[] convert(Coordinate coordinate) {
-        if(Double.isNaN( coordinate.z )) {
+        if (Double.isNaN(coordinate.z)) {
             return new double[] { coordinate.x, coordinate.y };
-        }
-        else {
+        } else {
             return new double[] { coordinate.x, coordinate.y, coordinate.z };
         }
     }
